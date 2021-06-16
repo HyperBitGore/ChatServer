@@ -59,5 +59,6 @@ int main() {
 		recieveMessages(&sock);
 	}
 	send.join();
+	sock.close();
 	return 0;
 }

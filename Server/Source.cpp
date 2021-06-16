@@ -17,7 +17,7 @@ void sendMessage(asio::ip::tcp::socket *sock, std::string msg) {
 	asio::write(*sock, asio::buffer(msg.c_str(), msg.size()), ec);
 }
 //When writing or reading data you need data size to make sure not stuck forever reading or writing
-void recieveMessage(asio::ip::tcp::socket *sock) {
+bool recieveMessage(asio::ip::tcp::socket *sock) {
 	asio::error_code ec;
 	char buf[128];
 	size_t bytes = (*sock).available();
@@ -27,29 +27,28 @@ void recieveMessage(asio::ip::tcp::socket *sock) {
 		messages.push_back(buf);
 		std::cout << "Message recieved from: " << sock->remote_endpoint() << std::endl;
 		if (ec == asio::error::eof) {
-			return;
+			return false;
 		}
 		else if (ec) {
 			std::cout << "Writing error trying again: " << ec.message() << std::endl;
-			return;
+			return true;
 		}
 	}
+	return true;
 }
 //System works but need to figure out how to stop blocking
 //Stop blocking on listen so actual main loop can run and hand out data
 void listeningThread() {
 	while (!exitf) {
-		if (iosafe.try_lock()) {
 			asio::error_code ec;
 			asio::ip::tcp::acceptor accept(io, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), 13));
 			asio::ip::tcp::socket* sock = new asio::ip::tcp::socket(io);
 			accept.listen();
 			accept.accept(*sock, ec);
+			iosafe.lock();
 			sockets.push_back((sock));
-			accept.close();
 			std::cout << "New connection from: " << sock->remote_endpoint() << std::endl;
 			iosafe.unlock();
-		}
 	}
 }
 
@@ -64,14 +63,15 @@ int main() {
 	std::thread lthread(listeningThread);
 	while (!exitf) {
 		if (iosafe.try_lock()) {
-			for (auto& sock : sockets) {
+			for (int j = 0; j < sockets.size(); j++) {
 				for (int i = 0; i < messages.size(); i++) {
-					sendMessage(sock, messages[i]);
+					sendMessage(sockets[j], messages[i]);
 				}
 				messages.clear();
-				recieveMessage(sock);
+				if (!recieveMessage(sockets[j])) {
+					sockets.erase(sockets.begin() + j);
+				}
 			}
-			std::cout << "Looped" << sockets.size() << std::endl;
 			iosafe.unlock();
 		}
 	}
