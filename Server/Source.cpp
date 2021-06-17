@@ -55,6 +55,7 @@ void listeningThread() {
 
 //I think socket is closed everytime accept is called again, and since client doesnt connect again no data passed
 //https://www.boost.org/doc/libs/1_35_0/doc/html/boost_asio/tutorial/tutdaytime3.html
+//Fix not sending data to all of the clients
 int main() {
 	/*asio::ip::tcp::acceptor accept(io, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), 13));
 	asio::ip::tcp::socket sock(io);
@@ -67,7 +68,10 @@ int main() {
 				for (int i = 0; i < messages.size(); i++) {
 					sendMessage(sockets[j], messages[i]);
 				}
-				messages.clear();
+				if (j == sockets.size() - 1) {
+					messages.clear();
+				}
+				//Add pinging to time out sockets that dc because this doesn't work
 				if (!recieveMessage(sockets[j])) {
 					sockets.erase(sockets.begin() + j);
 				}

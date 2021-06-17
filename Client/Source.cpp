@@ -33,10 +33,10 @@ void sendMessage(std::string name, std::string msg, asio::ip::tcp::socket *sock)
 }
 void sendT(asio::ip::tcp::socket* sock, std::string name) {
 	while (!exitf) {
-		std::string message;
-		std::cin >> message;
-		std::cin.clear();
+		char message[128];
+		std::cin.getline(message, 128);
 		sendMessage(name, message, sock);
+		std::cin.clear();
 	}
 }
 
