@@ -7,24 +7,32 @@
 std::mutex iosafe;
 asio::io_context io;
 bool exitf = false;
-//Use this to tell sendMessage when to write message, also need something for who
-size_t writebytes = 0;
-std::vector<std::string> messages;
+struct Msg {
+	std::string body;
+	asio::ip::tcp::socket* sock;
+	size_t bytes;
+};
+std::vector<Msg> messages;
 std::vector<asio::ip::tcp::socket*> sockets;
 
-void sendMessage(asio::ip::tcp::socket *sock, std::string msg) {
+void sendMessage(asio::ip::tcp::socket *sock, std::string msg, size_t bytes) {
 	asio::error_code ec;
-	asio::write(*sock, asio::buffer(msg.c_str(), msg.size()), ec);
+	std::cout << "Writing to " << sock->remote_endpoint() << " With " << bytes << " Bytes" << std::endl;
+	asio::write(*sock, asio::buffer(msg.c_str(), bytes), ec);
 }
 //When writing or reading data you need data size to make sure not stuck forever reading or writing
 bool recieveMessage(asio::ip::tcp::socket *sock) {
 	asio::error_code ec;
 	char buf[128];
 	size_t bytes = (*sock).available();
-	std::cout << "Bytes: " << bytes << " Peer: " << sock->remote_endpoint() << std::endl;
 	if (bytes > 0) {
 		asio::read(*sock, asio::buffer(buf, bytes), ec);
-		messages.push_back(buf);
+		std::cout << "Bytes: " << bytes << " Peer: " << sock->remote_endpoint() << std::endl;
+		Msg m;
+		m.body = buf;
+		m.sock = sock;
+		m.bytes = bytes;
+		messages.push_back(m);
 		std::cout << "Message recieved from: " << sock->remote_endpoint() << std::endl;
 		if (ec == asio::error::eof) {
 			return false;
@@ -57,16 +65,14 @@ void listeningThread() {
 //https://www.boost.org/doc/libs/1_35_0/doc/html/boost_asio/tutorial/tutdaytime3.html
 //Fix not sending data to all of the clients
 int main() {
-	/*asio::ip::tcp::acceptor accept(io, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), 13));
-	asio::ip::tcp::socket sock(io);
-	asio::error_code ec;
-	accept.accept(sock, ec);*/
 	std::thread lthread(listeningThread);
 	while (!exitf) {
 		if (iosafe.try_lock()) {
 			for (int j = 0; j < sockets.size(); j++) {
 				for (int i = 0; i < messages.size(); i++) {
-					sendMessage(sockets[j], messages[i]);
+					if (sockets[j] != messages[i].sock) {
+						sendMessage(sockets[j], messages[i].body, messages[i].bytes);
+					}
 				}
 				if (j == sockets.size() - 1) {
 					messages.clear();

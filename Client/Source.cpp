@@ -9,7 +9,14 @@ void recieveMessages(asio::ip::tcp::socket *soc) {
 	if (bytes > 0) {
 		asio::error_code ec;
 		size_t len = asio::read(*soc, asio::buffer(buf, bytes), ec);
-		std::cout << buf << std::endl;
+		//std::cout << buf << std::endl;
+		std::string out = buf;
+		for (int i = 0; i < out.size(); i++) {
+			if (out[i] <= 255 && out[i] >= 1) {
+				std::cout << out[i];
+			}
+		}
+		std::cout << std::endl;
 		if (ec == asio::error::eof) {
 			return;
 		}
@@ -22,7 +29,7 @@ void recieveMessages(asio::ip::tcp::socket *soc) {
 void sendMessage(std::string name, std::string msg, asio::ip::tcp::socket *sock) {
 	asio::error_code ec;
 	std::string message = name + ":" + msg;
-	asio::write(*sock, asio::buffer(message, message.size()), ec);
+	asio::write(*sock, asio::buffer(message, message.length()), ec);
 	if (ec == asio::error::eof) {
 		return;
 	}
