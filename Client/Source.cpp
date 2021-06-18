@@ -9,7 +9,6 @@ void recieveMessages(asio::ip::tcp::socket *soc) {
 	if (bytes > 0) {
 		asio::error_code ec;
 		size_t len = asio::read(*soc, asio::buffer(buf, bytes), ec);
-		//std::cout << buf << std::endl;
 		std::string out = buf;
 		for (int i = 0; i < out.size(); i++) {
 			if (out[i] <= 255 && out[i] >= 1) {
@@ -52,10 +51,15 @@ int main() {
 	std::string name;
 	std::cout << "Input Name: ";
 	std::cin >> name;
+	std::cin.clear();
 	asio::io_context io;
 	asio::ip::tcp::resolver resolv(io);
+	std::string ipstring;
+	std::cout << "Input IP of server: ";
+	std::cin >> ipstring;
+	std::cin.clear();
 	unsigned short port = 13;
-	asio::ip::address ip = asio::ip::address::from_string("127.0.0.1");
+	asio::ip::address ip = asio::ip::address::from_string(ipstring);
 	asio::ip::tcp::endpoint end(ip, port);
 	asio::ip::tcp::resolver::results_type endpoints = resolv.resolve(end);
 	asio::ip::tcp::socket sock(io);
